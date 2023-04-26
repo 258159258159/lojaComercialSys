@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.db import models
 from .utils import unique_slug_generator
 from django.db.models.signals import pre_save
@@ -11,6 +12,12 @@ class ProductQuerySet(models.query.QuerySet):
 
     def featured(self):
         return self.filter(featured = True, active = True)
+
+    def search(self, query):
+        lookups = (Q(title__contains = query) | 
+                        Q(description__contains = query) | 
+                        Q(price__contains = query))
+        return self.filter(lookups).distinct()
 
 class ProductManager(models.Manager):
     
@@ -30,6 +37,9 @@ class ProductManager(models.Manager):
             return qs.first()
         return None
 
+    def search(self, query):
+        return self.get_queryset().active().search(query)
+
 # Create your models here.
 class Product(models.Model): #product_category
     title       = models.CharField(max_length=120)
@@ -39,6 +49,7 @@ class Product(models.Model): #product_category
     image       = models.FileField(upload_to = 'products/', null = True, blank = True)
     featured    = models.BooleanField(default = False)
     active      = models.BooleanField(default = True)
+    timestamp   = models.DateTimeField(auto_now_add = True)
 
 
     objects = ProductManager()
